@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 import datetime 
 import pandas as pd
+import yaml as yy
 import sys
 reload(sys)
 sys.setdefaultencoding('utf-8') 
@@ -20,12 +21,10 @@ wechat_instance = WechatBasic(
     appsecret='992ce245e92def32471427cb65c54d3d'
 )
 
-support_product_list =['m5','C5400','C3150','C9','C2300','2300','5400','3150','c9']
+support_product_list =['m5','C5400','C3150','C9','C2300','C7']
 file_full_path = '/home/ubuntu/'
 
-
-pattern_list = []
-
+help_text='输入:产品.期限(如m5.19)  \n返回:给定期限(默认30天)内的us.amazon所有评分<=3 review\n当前支持的产品包括\nC9\nC2300\nC3150\nC5400\nm5'
 @csrf_exempt
 def wechat(request):
     if request.method == 'GET':
@@ -55,35 +54,38 @@ def wechat(request):
         # 当前会话内容
         content = message.content.strip(' ')  
         try:    
-            product_name,day  = content.split(',') 
+            product_name,day  = content.split('.') 
             
         except:
             product_name = content
             day = 30
-        if product_name not in support_product_list:
+        if product_name not in support_product_list and product_name.upper() not in support_product_list:
             reply_text = (
-                '该型号产品不支持!!使用说明：输入：产品,期限(如m5,19)  返回给定期限(默认30天)内的亚马逊所有差评(评分<=3)情况;\n\
-                 当前支持的产品是C9,C2300,C3150,C5400,m5..... '
+                '该型号产品不支持/:bye/:bye/:bye \n'+help_text
             )
-        elif  int(day) < 0 :
+        elif  int(day) < 0 or int(day) >100:
             reply_text = (
-                '请输入合理的期限(0-100)!!使用说明：输入：产品,期限(如m5,19)   返回给定期限(默认30天)内的亚马逊所有差评(评分<=3)情况;\n\
-                 当前支持的产品是C9,C2300,C3150,C5400,m5.....'
+                '请输入合理的期限(0-100)/:bye/:bye/:bye\n'+help_text
             )
-        else: 
-            
-            generate_report(product_name,int(day))
-            reply_text = get_bad_reviews(file_full_path+'bad_news_%s'%product_name)
+        elif product_name == 'm5':
+            reply_text = generate_report(product_name,int(day))
+        else:                       
+            reply_text = generate_report(product_name.upper(),int(day))
     elif isinstance(message, VoiceMessage):
-        reply_text = '语音信息我听不懂/:P-(/:P-(/:P-('
+        reply_text = '风太大听不见/:bye/:bye/:bye'
     elif isinstance(message, ImageMessage):
-        reply_text = '图片信息我也看不懂/:P-(/:P-(/:P-('
+        reply_text = '发图都是辣鸡/:bye/:bye/:bye'
     elif isinstance(message, VideoMessage):
-        reply_text = '视频我不会看/:P-('
+        reply_text = '发视频都是辣鸡/:bye/:bye/:bye'
     elif isinstance(message, LinkMessage):
         reply_text = '链接信息'
     elif isinstance(message, LocationMessage):
         reply_text = '地理位置信息'
+    elif isinstance(message, EventMessage):
+        if message.type == 'subscribe':
+            response = wechat_instance.response_text(content='你可算来了/:eat\n'+help_text)
+            return HttpResponse(response, content_type="application/xml")
+        else:reply_text = '功能还没有实现'
     else:
         reply_text = '功能还没有实现'
 
@@ -100,25 +102,30 @@ def generate_report(product_name='m5',day=30):
     cur_review = cur_review.loc[cur_review['date']>=target_day.strftime('%Y-%m-%d')]
     total_reviews = cur_review['star'].count()
     bad_reviews = cur_review[cur_review.star<4]['star'].count()
-    
+  
+    with open(file_full_path+'config.yml') as cc:
+        data = yy.load(cc.read())
+        star= data[product_name]['last_review']
+    cc.close()
+  
     file_length=0
-    with open(file_full_path+'bad_news_%s'%product_name,'w') as cc:
-        cc.write('there are %s bad of %s total news about %s during the last %s day(s) ...\n'%(bad_reviews,total_reviews,product_name,day))
-        
-        for index,item in enumerate(cur_review[cur_review.star<4]['content']):
-            try:
-                file_length+=len(item)
-                if file_length>max_char:
-                    cc.write('[%s]:%s \n' %(index,item[:(max_char-file_length)]))
-                    cc.write('msg is too loooooooong,')
-                    break
-                else:
-                    cc.write('[%s]:%s \n' %(index,item))
-            except Exception,e:
-                print e
-                cc.write('sth wrong of this line:%s,skip...\n'%e)
-        cc.write('更多信息请邮件给 skchang1587@gmail.com获取\n\n')
-    cc.close() 
+    reply_text = ''
+
+    reply_text+='Current Star %s.\n There are %s bad of %s total news about %s during the last %s day(s) ...\n'%(star,bad_reviews,total_reviews,product_name,day)       
+    for index,item in enumerate(cur_review[cur_review.star<4]['content']):
+        try:
+            file_length+=len(item)
+            if file_length>max_char:
+                reply_text += '[%s]:%s \n' %(index,item[:(max_char-file_length)])
+                reply_text +='msg is too loooooooong,'
+                break
+            else:                    
+                reply_text+='[%s]:%s \n' %(index,item)
+        except Exception,e:
+            print e
+            reply_text+='sth wrong of this line:%s,skip...\n'               
+    reply_text+='pls mail to 919127001@qq.com for detailed information\n\n'
+    return reply_text
     
     
 def get_bad_reviews(file_name):
