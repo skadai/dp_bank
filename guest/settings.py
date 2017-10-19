@@ -25,7 +25,7 @@ SECRET_KEY = '*q8&@6z9k4g=e6d55n7m@57^6kx5q=g(!a4$zb^g#e+dkg5ehr'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['18.221.208.151']
 
 
 # Application definition
@@ -38,7 +38,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'sign',
-    'bootstrap3',
+    'bootstrap3'
+    'wechat',
 ]
 
 MIDDLEWARE = [
