@@ -1,0 +1,23 @@
+[
+  {
+    "username": "笑搜", 
+    "openid": " ",
+    "lastshare": 38.6,
+    "share": 38.6,
+    "id": 1
+  },
+  {
+    "username": "长官",
+    "openid": " ",
+    "lastshare": 2.2,
+    "share": 2.2,
+    "id": 2
+  },
+  {
+    "username": "偶像",
+    "openid": " ",
+    "lastshare": 34.4,
+    "share": 34.4,
+    "id": 3
+  }
+]
