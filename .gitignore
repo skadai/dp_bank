@@ -65,3 +65,4 @@ target/
 # Configure
 wsgi.py
 *.conf
+*.sqlite3
