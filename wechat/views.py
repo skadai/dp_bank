@@ -31,6 +31,7 @@ cur = dict()
 
 # help_text='输入:产品.期限(如m5.19)  \n返回:给定期限(默认30天)内的us.amazon所有评分<=3 review\n当前支持的产品包括\nC9\nC2300\nC3150\nC5400\nm5'
 help_text = '输入000查看当前基金池\n' \
+            '输入999查看可支配余额\n' \
             '输入数字进行配送\n'
 
 name_text = '请输入字母确认你的昵称：\na: 笑搜\nb: 长官\nc: 偶像\nd：小凯'
@@ -89,12 +90,19 @@ def wechat(request):
         elif content == '000':
             u = User.find_by(openid= openid)
             reply_text = current_report(u)
-
+        elif content == '999':
+            u = User.find_by(openid= openid)
+            reply_text = current_bonus_report(u)
         # 消费接口
         elif content.startswith("大葫芦"):
-            u = User.find_by(openid=openid)
             r = content.split(' ')
             count = float(r[-1])
+            # 大葫芦 id value 表示定向操作
+            if len(r) > 2:
+                u = User.find_by(id=int(r[-2]))
+            # 大葫芦 value 表示 自操作
+            else:
+                u = User.find_by(openid=openid)
             reply_text = bill_spend(u, count)
 
         # 配送接口
@@ -151,14 +159,15 @@ def wechat(request):
 
 def count_add(u, count):
     u.add_share(count)
+    u.add_bonus(count)
     reply_text = '{} 配送了 {}元\n'.format(u.username, count)
-    reply_text += current_report(u)
+    reply_text += current_report(u) + current_bonus_report(u)
     return reply_text
 
 
 def bill_spend(u, count):
-    u.spend_share(count)
-    return current_report(u)
+    u.operate_bonus(count)
+    return current_bonus_report(u)
 
 
 def current_report(u):
@@ -179,9 +188,19 @@ def current_report(u):
     reply_text += '/:eat/:eat/:eat/:eat/:eat/:eat\n'
     sum_info = u.sum_bill()
     reply_text += '/:eat {}\n'.format(sum_info['total'])
-    reply_text += '/:bye {}\n'.format(sum_info['best_share'])
+    reply_text += '/:heart理事长: {}/:heart\n'.format(sum_info['best_share'])
     return reply_text
 
+
+def current_bonus_report(u):
+    reply_text = '当前的余额：\n'
+    reply_text += '/:eat/:eat/:eat/:eat/:eat/:eat\n'
+    result = User.current_bill()
+    for item in result:
+        reply_text += '/:eat{}：'.format(item['username'])
+        reply_text += str(item['bonus']) + '\n'
+    reply_text += '/:eat/:eat/:eat/:eat/:eat/:eat\n'
+    return reply_text
 
 # for tp-link product only
 def generate_report(product_name='m5',day=30):

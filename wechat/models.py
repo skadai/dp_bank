@@ -153,17 +153,9 @@ class User(Model):
         self.openid = form.get('openid', '')
         self.share = form.get('share',0)
         self.lastshare = form.get('lastshare',0)
+        self.bonus = form.get('bonus',0)
 
     def add_share(self,share):
-        for u in self.all():
-            if u.username == self.username:
-                self.__dict__.update(u.__dict__)
-            else:
-                pass
-
-        # if(share<0):
-        #     pass
-        # else:
         self.lastshare = self.share
         self.share = round(self.share + share,2)
         self.save()
@@ -171,6 +163,11 @@ class User(Model):
     def operate_share(self, share):
         self.lastshare = self.share
         self.share = round(share + self.share,2)
+
+    def operate_bonus(self, bonus):
+        # 限制bonus只能为正，这样余额只能减少不能增加
+        self.bonus -= round(abs(bonus),2)
+        self.save()
 
     @classmethod
     def current_bill(cls):
@@ -194,20 +191,17 @@ class User(Model):
             total += u.share
         return dict(total = total, best_share = cls.best_share().username)
 
-
     @classmethod
     def best_share(cls):
         share_list = [u.share for u in cls.all()]
         return cls.find_by(share=max(share_list))
 
-    def spend_share(self, count):
+    def add_bonus(self, count):
         # if self.username == 'csk':
         for u in self.all():
-            u.operate_share(round(float(-count)/len(self.all()),2))
+            u.bonus += (round(float(count)/len(self.all()),2))
             # log('spend_bill',u)
             u.save()
-        else:
-            log('user do not has the right to spend a bill...')
 
 
 def test_func():
