@@ -154,6 +154,7 @@ class User(Model):
         self.share = form.get('share',0)
         self.lastshare = form.get('lastshare',0)
         self.bonus = form.get('bonus',0)
+        self.block = form.get('block',0)
 
     def add_share(self,share):
         self.lastshare = self.share
@@ -199,10 +200,28 @@ class User(Model):
     def add_bonus(self, count):
         # if self.username == 'csk':
         for u in self.all():
-            u.bonus += (round(float(count)/len(self.all()),2))
-            # log('spend_bill',u)
-            u.save()
+            if u.block == 0:
+                u.bonus += (round(float(count)/(self.active_number()),2))
+                # log('spend_bill',u)
+                u.save()
 
+    @classmethod
+    def active_number(cls):
+        number = 0
+        for u in cls.all():
+            if u.block == 0:
+                number += 1
+        return number
+
+    def quit(self):
+        self.block = 1
+        self.save()
+        return '{}暂时退出'.format(self.username)
+
+    def restart(self):
+        self.block = 0
+        self.save()
+        return '{}又回来了'.format(self.username)
 
 def test_func():
     with open(User.db_path(), 'w') as f:

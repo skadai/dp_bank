@@ -25,7 +25,13 @@ wechat_instance = WechatBasic(
 
 support_product_list =['m5','C5400','C3150','C9','C2300','C7']
 file_full_path = '/home/ubuntu/'
-user_dict=dict(a=['笑搜', 38.6, 1], b=['长官',2.2,2], c=['偶像',34.4,3],d=['小凯',0,4])
+user_dict = dict(
+     a=['笑搜', 38.6, 1],
+     b=['长官', 2.2,  2],
+     c=['偶像', 34.4, 3],
+     d=['小凯', 0, 4]
+)
+
 num_list = [str(x) for x in range(10)] + ['.' , '-']
 cur = dict()
 
@@ -34,7 +40,7 @@ help_text = '输入000查看当前基金池\n' \
             '输入999查看可支配余额\n' \
             '输入数字进行配送\n'
 
-name_text = '请输入字母确认你的昵称：\na: 笑搜\nb: 长官\nc: 偶像\nd：小凯'
+name_text = '请以bind开头输入你的昵称(如bind小鱼)：'
 
 @csrf_exempt
 def wechat(request):
@@ -65,10 +71,9 @@ def wechat(request):
         openid = message.source
         content = message.content.strip(' ')
         user_tag = content.lower()
-        if user_tag in user_dict and not User.find_by(id=user_dict[user_tag][-1]):
-            username = user_dict[content.lower()][0]
-            share = user_dict[content.lower()][1]
-            u = User.new(dict(username=username, openid=openid, share=share))
+        if content.startswith('bind'):
+            username = content[4:]
+            u = User.new(dict(username=username, openid=openid))
             if not User.find_by(openid=openid):
                 u.save()
                 reply_text = '你好{}, 绑定成功了\n'.format(username) + help_text
@@ -104,6 +109,23 @@ def wechat(request):
             else:
                 u = User.find_by(openid=openid)
             reply_text = bill_spend(u, count)
+
+        elif content.startswith('block'):
+            args = content.split(' ')
+            if len(args) > 1:
+                user_id = int(args[-1])
+                u = User.find_by(id=user_id)
+            else:
+                u = User.find_by(openid=openid)
+            reply_text = u.quit()
+        elif content.startswith('unblock'):
+            args = content.split(' ')
+            if len(args) > 1:
+                user_id = int(args[-1])
+                u = User.find_by(id=user_id)
+            else:
+                u = User.find_by(openid=openid)
+            reply_text  = u.restart()
 
         # 配送接口
         elif False not in [x in num_list for x in content]:
@@ -175,6 +197,7 @@ def current_report(u):
     reply_text += '/:eat/:eat/:eat/:eat/:eat/:eat\n'
     result = User.current_bill()
     for item in result:
+
         reply_text += '/:eat{}：'.format(item['username'])
         reply_text += str(item['share'])
         delta = item['share']-item['lastshare']
@@ -197,6 +220,7 @@ def current_bonus_report(u):
     reply_text += '/:eat/:eat/:eat/:eat/:eat/:eat\n'
     result = User.current_bill()
     for item in result:
+
         reply_text += '/:eat{}：'.format(item['username'])
         reply_text += str(item['bonus']) + '\n'
     reply_text += '/:eat/:eat/:eat/:eat/:eat/:eat\n'
